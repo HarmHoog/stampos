@@ -1,3 +1,7 @@
 target/
 target-eclipse/
 stampos.*
+.slcache/
+./out
+.idea/
+*.iml

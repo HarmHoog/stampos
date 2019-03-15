@@ -9,10 +9,6 @@ class StripeController {
 
     def pushService
 
-    //TODO: Save the maps somewhere otherwise late payments might not be processed if the server was down.
-    Map<String, Integer> sourcesKlantID = new HashMap<String, Integer>()
-    Map<String, Integer> sourcesAmounts = new HashMap<String, Integer>()
-
     def index() {
     }
 
@@ -28,8 +24,9 @@ class StripeController {
         sourceParams.put("sofort[country]", "NL")
         sourceParams.put("redirect[return_url]", "http://www.harmhoog.ovh:8080/StamPOS")
         Source source = Source.create(sourceParams)
-        sourcesKlantID.put(source.getId(), params.klantID as int)
-        sourcesAmounts.put(source.getId(), params.amount as int)
+        BetaalVerzoek betaalVerzoek = new BetaalVerzoek(sourceID: source.getId(),
+                klantID: params.klantID as int, amount: params.amount as int)
+        betaalVerzoek.save()
         redirect(url : source.redirect.URL)
     }
 
@@ -39,22 +36,22 @@ class StripeController {
         if (request.JSON) {
             //Listen for chargeable sources.
             if ("source.chargeable".equals(request.JSON.type)) {
-
                 //Stripe secret key
                 //TODO: Add settings to configure keys in GUI
-                Stripe.apiKey = "STRIPE_PRIVATE_KEY"
+                Stripe.apiKey = "STRIPE_SECRET_KEY"
 
                 //Create charge
                 Map<String, Object> chargeParams = new HashMap<String, Object>()
                 String id = request.JSON.data.object.id
-                chargeParams.put("amount", sourcesAmounts.get(id))
+                BetaalVerzoek betaalVerzoek = BetaalVerzoek.findBySourceID(id)
+                chargeParams.put("amount", betaalVerzoek.amount)
                 chargeParams.put("currency", "eur")
                 chargeParams.put("source", id)
                 Charge.create(chargeParams)
 
                 //Add payment to user
                 //TODO: Check whether there exists a real possiblity that charges fail.
-                verwerkBetaling(sourcesKlantID.get(id), sourcesAmounts.get(id))
+                verwerkBetaling(betaalVerzoek.klantID, betaalVerzoek.amount)
             }
         }
 

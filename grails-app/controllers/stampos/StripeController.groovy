@@ -22,20 +22,32 @@ class StripeController {
         sourceParams.put("currency", "eur")
         sourceParams.put("amount", params.amount)
         sourceParams.put("sofort[country]", "NL")
+        //TODO: Add setting for domain
         sourceParams.put("redirect[return_url]", "http://www.harmhoog.ovh:8080/StamPOS")
+
+        //The source created is a response from Stripe which includes among other things the payment url.
         Source source = Source.create(sourceParams)
+
         BetaalVerzoek betaalVerzoek = new BetaalVerzoek(sourceID: source.getId(),
                 klantID: params.klantID as int, amount: params.amount as int)
         betaalVerzoek.save()
+        //Start the payment process for the customer
         redirect(url : source.redirect.URL)
     }
 
-    //The webhook, the link to this webhook should be set in the stripe dashboard.
-    //Also the webhook must use HTTPS
+    /**
+     * The webhook, the link to this webhook should be set in the stripe dashboard.
+     * @return 200 if succesful
+     */
     def webHook() {
-        if (request.JSON) {
-            //Listen for chargeable sources.
-            if ("source.chargeable".equals(request.JSON.type)) {
+        if (!request.JSON) {
+            render ''
+            return
+        }
+
+        switch(request.JSON.type) {
+            //When the customer has authorized the payment confirm it.
+            case "source.chargeable":
                 //Stripe secret key
                 //TODO: Add settings to configure keys in GUI
                 Stripe.apiKey = "STRIPE_SECRET_KEY"
@@ -50,23 +62,38 @@ class StripeController {
                 Charge.create(chargeParams)
 
                 //Add payment to user
-                //TODO: Check whether there exists a real possiblity that charges fail.
-                verwerkBetaling(betaalVerzoek.klantID, betaalVerzoek.amount)
-            }
+                verwerkBetaling(betaalVerzoek)
+                break
+            //Should almost never happen. Should only happen when something goes wrong within Stripe.
+            //If the charge fails the customer will receive his/her funds back on their bank account.
+            //TODO: Inform the customer about the failed charge since it fails somewhere within 14 days of the transaction..
+            case "charge.failed":
+                String id = request.JSON.data.object.id
+                BetaalVerzoek betaalVerzoek = BetaalVerzoek.findBySourceID(id)
+                undoBetaling(betaalVerzoek)
+                break
         }
 
-        //Return 202
+        //Return 200
         render ''
     }
 
     //Add the amount to the users account
-    private def verwerkBetaling(Integer klantID, Integer amountCent) {
-        Klant klant = Klant.get(klantID)
-        BigDecimal amount = BigDecimal.valueOf(amountCent).movePointLeft(2)
+    private def verwerkBetaling(BetaalVerzoek betaalVerzoek) {
+        Klant klant = Klant.get(betaalVerzoek.klantID)
+        BigDecimal amount = BigDecimal.valueOf(betaalVerzoek.amount).movePointLeft(2)
         Betaling betaling = new Betaling(klant: klant, bedrag : amount)
         betaling.save()
         render(betaling.toString())
         pushService.paymentDone(betaling)
+    }
+
+    //If the charge fails, just take back the amount issued to the customer
+    private def undoBetaling(BetaalVerzoek betaalVerzoek) {
+        if (betaalVerzoek.uitbetaald) {
+            betaalVerzoek.amount = -betaalVerzoek.amount
+            verwerkBetaling(betaalVerzoek)
+        }
     }
 
 

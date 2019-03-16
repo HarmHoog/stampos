@@ -7,6 +7,10 @@ class BetaalVerzoek {
     int klantID
     //Amount in cent
     int amount
+    //Used to make sure that a source chargeable request can be issued only once
+    //Also to check whether failed payments should result in a negative payment
+    //for the user.
+    boolean uitbetaald = false
 
 
     static constraints = {

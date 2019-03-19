@@ -136,7 +136,8 @@
 			<br/>
 			<g:link controller="uitstel" action="uitstel">Geef iedereen uitstel</g:link><br/>
 			<g:link controller="verwijderAlleBestellingen">Verwijder alle bestellingen</g:link><br/>
-
+			<br/>
+			<g:link controller="stripe" action="overzicht">Stripe-Sofort Instellingen</g:link><br/>
 			<!-- 
 			<div id="controller-list" role="navigation">
 				<h2>Available Controllers:</h2>

@@ -20,7 +20,13 @@ class SettingsService {
 	private static final String S_SENDER_EMAIL = "senderEmail"
 	private static final String S_SUFFICIENT_FUNDS_TITLE = "sufficientFundsTitle"
 	private static final String S_INSUFFICIENT_FUNDS_TITLE = "insufficientFundsTitle"
-	
+
+	private static final String STRIPE_PUBLISHABLE_KEY = "stripePublishKey"
+	private static final String STRIPE_SECRET_KEY = "stripeSecretKey"
+	private static final String STRIPE_RETURN_URL = "stripeReturnURL"
+	private static final String STRIPE_IS_ENABLED = "stripeEnabled"
+
+
 	public static final String EVERYWHERE = "everywhere";
 	public static final String LOCAL_NETWORK = "local_network";
 	public static final String LOCALHOST = "localhost"
@@ -350,5 +356,37 @@ class SettingsService {
 	def setInsufficientFundsTitle(String value)
 	{
 		setValue(S_INSUFFICIENT_FUNDS_TITLE, value)
+	}
+
+	def getStripePublishKey() {
+		return getSetting(STRIPE_PUBLISHABLE_KEY, "")
+	}
+
+	def setStripePublishKey(String newKey) {
+		setValue(STRIPE_PUBLISHABLE_KEY, newKey)
+	}
+
+	def getStripeSecretKey() {
+		return getSetting(STRIPE_SECRET_KEY, "")
+	}
+
+	def setStripeSecretKey(String newKey) {
+		setValue(STRIPE_SECRET_KEY, newKey)
+	}
+
+	def getStripeReturnURL() {
+		return getSetting(STRIPE_RETURN_URL, "")
+	}
+
+	def setStripeReturnURL(String newURL) {
+		setValue(STRIPE_RETURN_URL, newURL)
+	}
+
+	def isStripeEnabled() {
+		return getSetting(STRIPE_IS_ENABLED, false)
+	}
+
+	def setStripeEnabled(boolean newValue) {
+		setValue(STRIPE_IS_ENABLED, newValue)
 	}
 }

@@ -8,22 +8,31 @@ import com.stripe.model.Source
 class StripeController {
 
     def pushService
+    def settingsService
 
     def index() {
+        redirect(action: 'overzicht')
+    }
+
+    def overzicht() {
+        return ["oldIsStripeEnabled": settingsService.isStripeEnabled(),
+                "oldSecretKey": settingsService.getStripeSecretKey(),
+                "oldPublishKey": settingsService.getStripePublishKey(),
+                "oldReturnURL": settingsService.getStripeReturnURL()
+                ]
     }
 
     def startPayment() {
-        //Stripe public key
-        //TODO: Add settings to configure keys in GUI
-        Stripe.apiKey = "STRIPE_PUBLIC_KEY"
+        //Stripe publishable key
+        Stripe.apiKey = settingsService.getStripePublishKey()
 
         Map<String, Object> sourceParams = new HashMap<String, Object>()
         sourceParams.put("type", "sofort")
         sourceParams.put("currency", "eur")
         sourceParams.put("amount", params.amount)
         sourceParams.put("sofort[country]", "NL")
-        //TODO: Add setting for domain
-        sourceParams.put("redirect[return_url]", "http://www.harmhoog.ovh:8080/StamPOS")
+
+        sourceParams.put("redirect[return_url]", settingsService.getStripeReturnURL())
 
         //The source created is a response from Stripe which includes among other things the payment url.
         Source source = Source.create(sourceParams)
@@ -49,8 +58,7 @@ class StripeController {
             //When the customer has authorized the payment confirm it.
             case "source.chargeable":
                 //Stripe secret key
-                //TODO: Add settings to configure keys in GUI
-                Stripe.apiKey = "STRIPE_SECRET_KEY"
+                Stripe.apiKey = settingsService.getStripeSecretKey()
 
                 //Create charge
                 Map<String, Object> chargeParams = new HashMap<String, Object>()
@@ -75,7 +83,7 @@ class StripeController {
         }
 
         //Return 200
-        render ''
+        render 'Stripe webhook. Set this in your Stripe dashboard as webhook. Must use HTTPS for live applications.'
     }
 
     //Add the amount to the users account
@@ -93,8 +101,20 @@ class StripeController {
         if (betaalVerzoek.uitbetaald) {
             betaalVerzoek.amount = -betaalVerzoek.amount
             verwerkBetaling(betaalVerzoek)
+            betaalVerzoek.amount = -betaalVerzoek.amount
         }
+
+        betaalVerzoek.status = BetaalVerzoek.BetaalStatus.FAILED_CHARGE
+
     }
 
+    def save() {
+        settingsService.setStripeEnabled(params.isStripeEnabled as boolean)
+        settingsService.setStripePublishKey(params.publishKey)
+        settingsService.setStripeSecretKey(params.secretKey)
+        settingsService.setStripeReturnURL(params.returnURL)
+        flash.message = g.message(code: "settings.saved")
+        redirect (action:"overzicht")
+    }
 
 }
